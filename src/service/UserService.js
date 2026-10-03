@@ -1,12 +1,11 @@
-export const searchUsers = async({ keyword = "", roleName = "", page = 0, size = 5, sort = "id,asc" }) => {
-    const params = new URLSearchParams({
-        keyword:keyword,
-        roleName:roleName,
-        page:page,
-        size:size,
-        sort:sort
-    }).toString();
-     const response = await fetch(`http://localhost:8080/api/users?${params}`, {
+export const searchUsers = async({ keyword = "", roleName = "", page = 0, size = 5, sort = "id,asc" } = {}) => {
+    const queryObj = { page, size };
+    if (keyword && String(keyword).trim()) queryObj.keyword = String(keyword).trim();
+    if (roleName && String(roleName).trim()) queryObj.roleName = String(roleName).trim();
+    if (sort) queryObj.sort = sort;
+
+    const params = new URLSearchParams(queryObj).toString();
+    const response = await fetch(`http://localhost:8080/api/users?${params}`, {
         method: "GET",
         headers: {
             "Content-Type": "application/json",
@@ -47,16 +46,15 @@ export const updateUser = async(userData) => {
         throw new Error(errorData.error || "Không thể sửa người dùng");
     }
 }
-export const getBookingsByUser = async({userId,cinemaName,status,fromDate,toDate,page = 0, size = 5, sort = "id,asc"}) => {
-    const params = new URLSearchParams({
-        cinemaName: cinemaName,
-        status: status,
-        fromDate: fromDate,
-        toDate: toDate,
-        page:page,
-        size:size,
-        sort:sort
-    }).toString();
+export const getBookingsByUser = async({userId,cinemaName,status,fromDate,toDate,page = 0, size = 5, sort = "id,asc"} = {}) => {
+    const queryObj = { page, size };
+    if (cinemaName && String(cinemaName).trim()) queryObj.cinemaName = String(cinemaName).trim();
+    if (status && String(status).trim()) queryObj.status = String(status).trim();
+    if (fromDate) queryObj.fromDate = fromDate;
+    if (toDate) queryObj.toDate = toDate;
+    if (sort) queryObj.sort = sort;
+
+    const params = new URLSearchParams(queryObj).toString();
     const response = await fetch(`http://localhost:8080/api/users/${userId}/bookings?${params}`);
     const result = await response.json();
     return result;

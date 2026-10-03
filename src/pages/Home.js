@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
-import { Container, Row, Col, Button, Badge } from "react-bootstrap";
+import { Container, Row, Col, Button, Badge, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 
 export default function Home() {
   const [movies, setMovies] = useState([]);
   const [filter, setFilter] = useState("now-showing");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Giả sử API lấy danh sách phim
-    fetch("http://localhost:8080/api/movies")
+    setIsLoading(true);
+    fetch(`http://localhost:8080/api/movies/${filter}`)
       .then((res) => res.json())
       .then((data) => setMovies(data))
-      .catch((err) => console.error("Lỗi tải phim:", err));
-  }, []);
+      .catch((err) => console.error("Lỗi tải phim:", err))
+      .finally(() => setIsLoading(false));
+  }, [filter]);
 
   return (
     <div className="bg-[#0f1115] min-h-screen text-white font-sans">
@@ -73,53 +75,69 @@ export default function Home() {
               </button>
             ))}
           </div>
-          <button className="text-red-500 font-bold hover:underline">Xem tất cả</button>
+          <button 
+            onClick={() => navigate('/movies')} 
+            className="text-red-500 font-bold hover:underline"
+          >
+            Xem tất cả
+          </button>
         </div>
 
         {/* 3. MOVIE GRID */}
-        <Row className="g-6">
-          {movies.map((movie) => (
-            <Col key={movie.id} xs={6} md={4} lg={3}>
-              <div 
-                className="group relative bg-[#16191e] rounded-2xl overflow-hidden border border-white/5 transition-all duration-500 hover:border-red-600/50 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)]"
-                onClick={() => navigate(`/movies/${movie.id}`)}
-              >
-                {/* Poster */}
-                <div className="relative aspect-[2/3] overflow-hidden">
-                  <img 
-                    src={movie.posterUrl} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    alt={movie.title}
-                  />
-                  <div className="absolute top-3 left-3">
-                    <Badge className="bg-red-600 shadow-lg">{movie.ageRating}</Badge>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Spinner animation="border" variant="danger" />
+            <p className="mt-4 text-gray-400">Đang tải phim...</p>
+          </div>
+        ) : movies.length === 0 ? (
+          <div className="text-center py-16 bg-[#16191e] rounded-2xl border border-dashed border-gray-700">
+            <p className="text-gray-400 text-lg">Hiện chưa có phim nào trong mục này.</p>
+          </div>
+        ) : (
+          <Row className="g-6">
+            {movies.map((movie) => (
+              <Col key={movie.id} xs={6} md={4} lg={3}>
+                <div 
+                  className="group relative bg-[#16191e] rounded-2xl overflow-hidden border border-white/5 transition-all duration-500 hover:border-red-600/50 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.6)] cursor-pointer"
+                  onClick={() => navigate(`/movies/${movie.id}`)}
+                >
+                  {/* Poster */}
+                  <div className="relative aspect-[2/3] overflow-hidden">
+                    <img 
+                      src={movie.posterUrl} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      alt={movie.title}
+                    />
+                    <div className="absolute top-3 left-3">
+                      <Badge className="bg-red-600 shadow-lg">{movie.ageRating}</Badge>
+                    </div>
+                    {/* Overlay khi hover */}
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
+                       <Button variant="danger" className="rounded-full font-bold px-4 py-2 scale-75 group-hover:scale-100 transition-transform">
+                          {filter === "coming-soon" ? "CHI TIẾT" : "ĐẶT VÉ"}
+                       </Button>
+                    </div>
                   </div>
-                  {/* Overlay khi hover */}
-                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-4">
-                     <Button variant="danger" className="rounded-full font-bold px-4 py-2 scale-75 group-hover:scale-100 transition-transform">
-                        ĐẶT VÉ
-                     </Button>
-                  </div>
-                </div>
 
-                {/* Content */}
-                <div className="p-4">
-                  <h6 className="font-bold text-lg truncate group-hover:text-red-500 transition-colors uppercase italic tracking-tighter">
-                    {movie.title}
-                  </h6>
-                  <div className="flex justify-between items-center mt-2 text-sm text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <i className="bi bi-clock"></i> 120'
-                    </span>
-                    <span className="text-amber-400 font-bold flex items-center gap-1">
-                      <i className="bi bi-star-fill"></i> 9.5
-                    </span>
+                  {/* Content */}
+                  <div className="p-4">
+                    <h6 className="font-bold text-lg truncate group-hover:text-red-500 transition-colors uppercase italic tracking-tighter">
+                      {movie.title}
+                    </h6>
+                    <div className="flex justify-between items-center mt-2 text-sm text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <i className="bi bi-clock"></i> {movie.duration ? `${movie.duration}'` : "120'"}
+                      </span>
+                      <span className="text-amber-400 font-bold flex items-center gap-1">
+                        <i className="bi bi-star-fill"></i> 9.5
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </Col>
-          ))}
-        </Row>
+              </Col>
+            ))}
+          </Row>
+        )}
 
         {/* 4. PARTNERS (CINEMAS) */}
         <div className="mt-24 text-center">

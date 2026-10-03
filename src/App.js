@@ -25,6 +25,7 @@ import User from './pages/admin/user';
 import UserDetail from './pages/admin/user/UserDetail';
 import Profile from './pages/Profile';
 import RoomPage from './pages/admin/room';
+import { checkIsAdmin } from './utils/auth';
 
 // Component bảo vệ Route
 const ProtectedRoute = ({ children }) => {
@@ -41,14 +42,14 @@ const ProtectedRoute = ({ children }) => {
 const AdminRoute = ({ children }) => {
     const token = localStorage.getItem("accessToken"); 
     const rolesRaw = localStorage.getItem("roles");
-    const roles = (rolesRaw && rolesRaw !== "undefined") ? JSON.parse(rolesRaw) : [];
-    // Thêm dấu ngoặc đóng ) cho hàm includes
-    const isAdmin = roles && roles.some(r => r.name.includes("ADMIN"));    
+    const isAdmin = checkIsAdmin(rolesRaw);
+    
     if (!token) {
         return <Navigate to="/login" replace />;
     }
     
     if (!isAdmin) {
+        console.warn("Truy cập /admin bị từ chối: Tài khoản chưa có quyền ADMIN trong localStorage.", { roles: rolesRaw });
         return <Navigate to="/" replace />;
     }
 

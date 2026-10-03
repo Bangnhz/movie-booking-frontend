@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { checkIsAdmin } from "../../utils/auth";
 
 export default function Header() {
   const navigate = useNavigate();
   const user = localStorage.getItem("username") || null;
   const rolesRaw = localStorage.getItem("roles");
-  const roles = (rolesRaw && rolesRaw !== "undefined") ? JSON.parse(rolesRaw) : [];
-  const isAdmin = roles.includes("ADMIN");
+  const isAdmin = checkIsAdmin(rolesRaw);
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   const handleLogout = (e) => {

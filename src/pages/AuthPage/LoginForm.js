@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { checkIsAdmin } from "../../utils/auth";
 
 export default function LoginForm({ setError, switchToRegister }) {
     const [data, setData] = useState({ username: "", password: "" });
@@ -21,8 +22,12 @@ export default function LoginForm({ setError, switchToRegister }) {
             localStorage.setItem("accessToken", resData.accessToken);
             localStorage.setItem("username", resData.username); 
             localStorage.setItem("roles", JSON.stringify(resData.roles || []));
-            if(resData.roles.some(role => role.name.includes("ADMIN"))) navigate("/admin");
-            else navigate('/home');
+
+            if (checkIsAdmin(resData.roles)) {
+                navigate("/admin");
+            } else {
+                navigate('/home');
+            }
         } catch (err) {
             setError(err.message);
         }

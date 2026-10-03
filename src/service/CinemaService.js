@@ -3,12 +3,12 @@ export const getCinemasByCity = async (cityId) => {
     const result = await response.json();
     return result;
 }
-export const getCinemaById = async(cinemaId) => {
+export const getCinemaById = async (cinemaId) => {
     const response = await fetch(`http://localhost:8080/api/cinemas/${cinemaId}`);
     const result = await response.json();
     return result;
 }
-export const updateCinema = async(id,cinemaData) => {
+export const updateCinema = async (id, cinemaData) => {
     const token = localStorage.getItem("accessToken");
     const response = await fetch(`http://localhost:8080/api/cinemas/${id}`, {
         method: "PUT",
@@ -23,7 +23,7 @@ export const updateCinema = async(id,cinemaData) => {
     }
     return response.json();
 }
-export const addCinema = async(cinemaData) => {
+export const addCinema = async (cinemaData) => {
     const token = localStorage.getItem("accessToken");
     const response = await fetch(`http://localhost:8080/api/cinemas`, {
         method: "POST",
@@ -38,14 +38,13 @@ export const addCinema = async(cinemaData) => {
     }
     return response.json();
 }
-export const searchCinemas = async ({ name = "", cityId = "", page = 0, size = 5, sort = "id,asc" }) => {
-    const params = new URLSearchParams({
-        name: name,
-        cityId: cityId,
-        page: page,
-        size: size,
-        sort: sort
-    }).toString();
+export const searchCinemas = async ({ name = "", cityId = "", page = 0, size = 5, sort = "id,asc" } = {}) => {
+    const queryObj = { page, size };
+    if (name && String(name).trim()) queryObj.name = String(name).trim();
+    if (cityId !== "" && cityId !== null && cityId !== undefined) queryObj.cityId = cityId;
+    if (sort) queryObj.sort = sort;
+
+    const params = new URLSearchParams(queryObj).toString();
     const response = await fetch(`http://localhost:8080/api/cinemas?${params}`, {
         method: "GET",
         headers: {
