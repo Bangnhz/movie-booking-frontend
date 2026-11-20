@@ -9,17 +9,25 @@ import CountdownTimer from "../../../component/CountdownTimer";
 
 export default function Payment() {
   const navigate = useNavigate();
-  const { bookingId } = useParams();
+  const { tempBookingId } = useParams();
 
   const [bookingDetail, setBookingDetail] = useState({});
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [startTime, setStartTime] = useState(new Date());
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [expirationTime, setExpirationTime] = useState(new Date());
   useEffect(() => {
-    fetch(`http://localhost:8080/api/bookings/${bookingId}`)
-      .then((res) => {
-        if (!res.ok) throw new Error("Không lấy được booking");
-        return res.json();
+    const accessToken = localStorage.getItem("accessToken");
+    fetch(`http://localhost:8080/api/bookings/${tempBookingId}`,
+       {
+          headers: {
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+    )
+      .then((response) => {
+        if (!response.ok) throw new Error("Không lấy được booking");
+        return response.json();
       })
       .then((data) => {
         setBookingDetail(data);
@@ -27,26 +35,58 @@ export default function Payment() {
         
         setStartTime(new Date(data.createdAt)); 
         setExpirationTime(new Date(data.expirationTime));
+      })
+      .catch((error) => {
+        Swal.fire("Lỗi", error.message || "Không lấy được booking", "error");
       });
-  }, []);
-  const createPayment = () => {
+  }, [tempBookingId, navigate]);
+  const createPayment = async() => {
+    if (isCreatingPayment) {
+      return;
+    }
     if (!paymentMethod) {
       Swal.fire("Lỗi", "Vui lòng chọn phương thức thanh toán", "warning");
       return;
     }
-    console.log(`http://localhost:8080/api/payment/vnpay/create?amount=${bookingDetail.totalPrice} `);
-    fetch(`http://localhost:8080/api/payment/vnpay/create?amount=${bookingDetail.totalPrice}`,{
-      method:"POST"
-    })
-    .then((res) => {
-      if (!res.ok) throw new Error("Không lấy được booking");
-        return res.json();
-    })
-    .then((data) =>{
-      console.log(data);
-      window.location.href = data.paymentUrl;
+    const accessToken = localStorage.getItem("accessToken");
+
+  if (!accessToken) {
+    await Swal.fire(
+      "Thông báo",
+      "Vui lòng đăng nhập để thanh toán",
+      "warning"
+    );
+    navigate("/login");
+    return;
+  }
+   setIsCreatingPayment(true);
+   try{
+    const params = new URLSearchParams({
+      tempBookingId
     });
-    
+    const response = await fetch(`http://localhost:8080/api/payment/vnpay/create?${params.toString()}`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+      },
+    });
+    if(!response.ok) {
+      const message = await response.text();
+      throw new Error(message || "Không thể tạo giao dịch thanh toán");
+    }
+    const data = await response.json();
+    if (!data.paymentUrl) {
+      throw new Error("Backend không trả về URL thanh toán");
+    }
+    window.location.assign(data.paymentUrl);
+
+   } catch(error){
+    Swal.fire("Lỗi", error.message || "Đã xảy ra lỗi khi tạo giao dịch thanh toán", "error");
+   }
+   finally {
+    setIsCreatingPayment(false);
+   }
+
   };
 
   return (
@@ -196,9 +236,10 @@ export default function Payment() {
 
           <button
             onClick={createPayment}
+            disabled={isCreatingPayment}
             className="w-full mt-6 bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold"
           >
-            Thanh toán
+            {isCreatingPayment ? "Đang xử lý..." : "Thanh toán"}
           </button>
           
         </div>

@@ -94,7 +94,7 @@ export default function TicketCard({
                         disabled={selectedSeats.length === 0 || isBooking}
                         onClick={handleBooking}
                     >
-                        {selectedSeats.length > 0 ? 'MUA VÉ NGAY' : 'CHỌN GHẾ'}
+                        {isBooking ? "Đang chuyển trang..." : "MUA VÉ NGAY"}
                     </button>
                 </div>
             </div>

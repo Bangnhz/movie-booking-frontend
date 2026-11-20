@@ -89,7 +89,7 @@ function App() {
             } 
           />
           <Route 
-            path='payments/:bookingId' 
+            path='payments/:tempBookingId'
             element={
               <ProtectedRoute>
                 <Payment/>
