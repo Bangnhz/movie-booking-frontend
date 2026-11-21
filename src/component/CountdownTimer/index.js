@@ -1,42 +1,53 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 
-export default function CountdownTimer({startTime,expirationTime}){
-    const [timeLeft,setTimeLeft] = useState(Math.floor((expirationTime - Date.now())/1000))
-    
-    // 1. Kịch bản khi KHÔNG có [startTime] (Lỗi)
-    // Lần 1 (Vừa F5): Cha chưa có data, truyền startTime = 0 hoặc Date.now(). 
-    // Con nhận 0, useEffect chạy (vì [] luôn chạy lần đầu). 
-    // Nó tính toán dựa trên số 0 → Ra kết quả sai (ví dụ 899) 
-    // → Khóa (Lock) cái setInterval với con số 899 này.
-    // Lần 2 (100ms sau): Cha nhận data từ DB, truyền startTime = 1711234567. 
-    // Con nhận giá trị mới, nó Re-render giao diện. 
-    // NHƯNG, vì useEffect dùng [] nên chỉ chạy 1 lần.
-    // Kết quả: Giao diện của bạn vẫn cứ đếm ngược từ 899, mặc kệ cái startTime vừa mới về.
+export default function CountdownTimer({ startTime, expirationTime }) {
+    const calculateRemaining = () => {
+        if (!expirationTime) return 0;
+        const expMs = typeof expirationTime === "number" ? expirationTime : new Date(expirationTime).getTime();
+        if (Number.isNaN(expMs)) return 0;
+        const diff = Math.floor((expMs - Date.now()) / 1000);
+        return diff > 0 ? diff : 0;
+    };
+
+    const [timeLeft, setTimeLeft] = useState(calculateRemaining);
+
     useEffect(() => {
-        setTimeLeft(Math.floor((expirationTime - Date.now())/1000))
-        if (Math.floor((expirationTime - Date.now())/1000) <= 0){
-            setTimeLeft(0);
+        // Cập nhật lại thời gian còn lại chính xác từ expirationTime - Date.now()
+        const updateTimer = () => {
+            const remaining = calculateRemaining();
+            setTimeLeft(remaining);
+            return remaining;
+        };
+
+        const currentRemaining = updateTimer();
+        if (currentRemaining <= 0) {
             return;
         }
-        const timer = setInterval(()=>{
-            setTimeLeft((prev) => {
-                if(prev <= 0){
-                    clearInterval(timer);
-                    return 0;
-                }
-                return prev - 1;
-            });
-        },1000);
+
+        // Mỗi nhịp setInterval (1 giây) tính lại từ expirationTime - Date.now(),
+        // tránh việc bị lệch giây khi trình duyệt hạn chế chạy nền (background tab throttling)
+        const timer = setInterval(() => {
+            const remaining = updateTimer();
+            if (remaining <= 0) {
+                clearInterval(timer);
+            }
+        }, 1000);
+
         return () => clearInterval(timer);
-    },[startTime]);
-      // format mm:ss
-    const minutes = Math.floor(timeLeft / 60) ;
+    }, [expirationTime, startTime]);
+
+    // Format mm:ss
+    const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
+
+    // Tổng thời gian dự kiến (mặc định 900 giây = 15 phút nếu không tính được từ startTime)
+    const totalDuration = (startTime && expirationTime)
+        ? Math.max(1, Math.floor(((typeof expirationTime === "number" ? expirationTime : new Date(expirationTime).getTime()) - (typeof startTime === "number" ? startTime : new Date(startTime).getTime())) / 1000))
+        : 900;
+
     return (
-        <>
- <div className="flex items-center justify-center min-h-[200px]">
+        <div className="flex items-center justify-center min-h-[200px]">
             <div className="bg-white shadow-lg rounded-2xl p-6 w-[300px] text-center border">
-                
                 {/* Title */}
                 <h2 className="text-lg font-semibold mb-2">
                     Thời gian giữ vé
@@ -52,7 +63,7 @@ export default function CountdownTimer({startTime,expirationTime}){
                     <div
                         className="bg-red-500 h-2 rounded-full transition-all duration-1000"
                         style={{
-                            width: `${(timeLeft / 900) * 100}%`,
+                            width: `${Math.min(100, Math.max(0, (timeLeft / totalDuration) * 100))}%`,
                         }}
                     ></div>
                 </div>
@@ -69,6 +80,5 @@ export default function CountdownTimer({startTime,expirationTime}){
                 )}
             </div>
         </div>
-        </>
-    )
+    );
 }

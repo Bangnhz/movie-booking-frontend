@@ -1,15 +1,19 @@
 export const searchUsers = async({ keyword = "", roleName = "", page = 0, size = 5, sort = "id,asc" } = {}) => {
+    const token = localStorage.getItem("accessToken");
     const queryObj = { page, size };
     if (keyword && String(keyword).trim()) queryObj.keyword = String(keyword).trim();
     if (roleName && String(roleName).trim()) queryObj.roleName = String(roleName).trim();
     if (sort) queryObj.sort = sort;
 
     const params = new URLSearchParams(queryObj).toString();
+    const headers = {
+        "Content-Type": "application/json",
+    };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
     const response = await fetch(`http://localhost:8080/api/users?${params}`, {
         method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        }
+        headers
     });
 
     const result = await response.json();
@@ -47,6 +51,7 @@ export const updateUser = async(userData) => {
     }
 }
 export const getBookingsByUser = async({userId,cinemaName,status,fromDate,toDate,page = 0, size = 5, sort = "id,asc"} = {}) => {
+    const token = localStorage.getItem("accessToken");
     const queryObj = { page, size };
     if (cinemaName && String(cinemaName).trim()) queryObj.cinemaName = String(cinemaName).trim();
     if (status && String(status).trim()) queryObj.status = String(status).trim();
@@ -55,7 +60,35 @@ export const getBookingsByUser = async({userId,cinemaName,status,fromDate,toDate
     if (sort) queryObj.sort = sort;
 
     const params = new URLSearchParams(queryObj).toString();
-    const response = await fetch(`http://localhost:8080/api/users/${userId}/bookings?${params}`);
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const response = await fetch(`http://localhost:8080/api/users/${userId}/bookings?${params}`, {
+        method: "GET",
+        headers
+    });
+    const result = await response.json();
+    return result;
+}
+
+export const getMyBookings = async({ cinemaName, status, fromDate, toDate, page = 0, size = 5, sort = "id,asc" } = {}) => {
+    const token = localStorage.getItem("accessToken");
+    const queryObj = { page, size };
+    if (cinemaName && String(cinemaName).trim()) queryObj.cinemaName = String(cinemaName).trim();
+    if (status && String(status).trim()) queryObj.status = String(status).trim();
+    if (fromDate) queryObj.fromDate = fromDate;
+    if (toDate) queryObj.toDate = toDate;
+    if (sort) queryObj.sort = sort;
+
+    const params = new URLSearchParams(queryObj).toString();
+    const headers = { "Content-Type": "application/json" };
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    // Gọi endpoint /me/bookings
+    const response = await fetch(`http://localhost:8080/api/users/me/bookings?${params}`, {
+        method: "GET",
+        headers
+    });
     const result = await response.json();
     return result;
 }

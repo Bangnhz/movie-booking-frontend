@@ -10,6 +10,7 @@ import CinemaList from './component/CinemaList';
 import Booking from './pages/web/Booking';
 import Payment from './pages/web/Payment';
 import PaymentResult from './pages/web/Payment/PaymentResult';
+import MyTickets from './pages/web/Ticket/MyTickets';
 import MovieDetail from './pages/web/Movie/MovieDetail';
 import WebLayout from './layout/web/WebLayout';
 import AdminLayout from './layout/admin/AdminLayout';
@@ -104,6 +105,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path='my-tickets' 
+            element={
+              <ProtectedRoute>
+                <MyTickets/>
+              </ProtectedRoute>
+            } 
+          />
         </Route>
 
         {/* TRANG ADMIN */}
@@ -119,6 +128,7 @@ function App() {
           <Route path="movies" element={<AdminMovieList/>}/>
           <Route path="movies/:id" element={<MovieEdit/>}/>
           <Route path="cinemas" element={<AdminCinemaList/>}/>
+          <Route path="cinemas/add" element={<CinemaEdit/>}/>
           <Route path="cinemas/:id/edit" element={<CinemaEdit/>}/>
           <Route path="cinemas/:id/rooms" element={<RoomPage/>}/>
           <Route path="cinemas/:id" element={<RoomPage/>}/>

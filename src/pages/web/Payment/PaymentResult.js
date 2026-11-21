@@ -1,7 +1,7 @@
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { CheckCircle, XCircle, Home, Ticket, RotateCcw, AlertTriangle, Loader2 } from "lucide-react";
 import BookingProgress from "../../../component/BookingProgress";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 
 export default function PaymentResult() {
     const navigate = useNavigate();
@@ -12,10 +12,12 @@ export default function PaymentResult() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [pollCount, setPollCount] = useState(0);
+    const [isPollingStopped, setIsPollingStopped] = useState(false);
+    const [isRechecking, setIsRechecking] = useState(false);
 
     const timerRef = useRef(null);
 
-    useEffect(() => {
+    const checkStatus = useCallback(async (isManual = false) => {
         if (!txnRef) {
             setError("Không tìm thấy mã giao dịch trong yêu cầu");
             setLoading(false);
@@ -29,51 +31,65 @@ export default function PaymentResult() {
             return;
         }
 
-        let isMounted = true;
+        if (isManual) {
+            setIsRechecking(true);
+        }
 
-        const checkStatus = async () => {
-            try {
-                const res = await fetch(`http://localhost:8080/api/payment/vnpay/status?txnRef=${encodeURIComponent(txnRef)}`, {
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`
+        try {
+            const res = await fetch(`http://localhost:8080/api/payment/vnpay/status?txnRef=${encodeURIComponent(txnRef)}`, {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                }
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || "Không thể xác thực trạng thái thanh toán");
+            }
+
+            const data = await res.json();
+            setPaymentData(data);
+            setLoading(false);
+            setIsRechecking(false);
+
+            // Nếu trạng thái vẫn là PENDING
+            if (data.status === "PENDING") {
+                setPollCount((prev) => {
+                    if (prev < 15) {
+                        timerRef.current = setTimeout(() => {
+                            checkStatus(false);
+                        }, 2000);
+                        return prev + 1;
+                    } else {
+                        // Đã đủ 15 lần poll (~30 giây): dừng tự động polling và thông báo rõ cho người dùng
+                        setIsPollingStopped(true);
+                        return prev;
                     }
                 });
-
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(text || "Không thể xác thực trạng thái thanh toán");
-                }
-
-                const data = await res.json();
-                if (!isMounted) return;
-
-                setPaymentData(data);
-                setLoading(false);
-
-                // Nếu trạng thái vẫn là PENDING và chưa quá 15 lần poll (30 giây)
-                if (data.status === "PENDING") {
-                    setPollCount((prev) => {
-                        if (prev < 15) {
-                            timerRef.current = setTimeout(checkStatus, 2000);
-                            return prev + 1;
-                        }
-                        return prev;
-                    });
-                }
-            } catch (err) {
-                if (!isMounted) return;
-                setError(err.message || "Đã xảy ra lỗi khi kiểm tra giao dịch");
-                setLoading(false);
+            } else {
+                setIsPollingStopped(false);
             }
-        };
+        } catch (err) {
+            setError(err.message || "Đã xảy ra lỗi khi kiểm tra giao dịch");
+            setLoading(false);
+            setIsRechecking(false);
+        }
+    }, [txnRef]);
 
-        checkStatus();
+    useEffect(() => {
+        checkStatus(false);
 
         return () => {
-            isMounted = false;
             if (timerRef.current) clearTimeout(timerRef.current);
         };
-    }, [txnRef]);
+    }, [checkStatus]);
+
+    const handleManualRecheck = () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+        setIsPollingStopped(false);
+        setPollCount(0);
+        checkStatus(true);
+    };
 
     if (loading) {
         return (
@@ -115,15 +131,25 @@ export default function PaymentResult() {
 
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center border border-gray-100">
                 {isPending ? (
-                    <>
-                        <div className="relative w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-                            <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
-                        </div>
-                        <h1 className="text-2xl font-bold text-gray-800 mb-2">Đang xác nhận thanh toán...</h1>
-                        <p className="text-gray-600 mb-6">
-                            Hệ thống đang đối soát với cổng thanh toán VNPay. Vui lòng đợi trong giây lát.
-                        </p>
-                    </>
+                    isPollingStopped ? (
+                        <>
+                            <AlertTriangle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                            <h1 className="text-2xl font-bold text-gray-800 mb-2">Chưa nhận được kết quả thanh toán</h1>
+                            <p className="text-gray-600 mb-6">
+                                Hệ thống đã dừng tự động cập nhật sau 30 giây. Giao dịch có thể đang được ngân hàng xử lý hoặc mạng bị chậm. Bạn có thể bấm kiểm tra lại hoặc xem trong vé của tôi.
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <div className="relative w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                                <Loader2 className="w-16 h-16 text-blue-600 animate-spin" />
+                            </div>
+                            <h1 className="text-2xl font-bold text-gray-800 mb-2">Đang xác nhận thanh toán...</h1>
+                            <p className="text-gray-600 mb-6">
+                                Hệ thống đang đối soát với cổng thanh toán VNPay. Vui lòng đợi trong giây lát.
+                            </p>
+                        </>
+                    )
                 ) : isSuccess ? (
                     <>
                         <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-4" />
@@ -162,7 +188,20 @@ export default function PaymentResult() {
                 <div className="flex flex-col gap-3">
                     {isPending ? (
                         <div className="space-y-3">
-                            <p className="text-xs text-gray-400">Tự động cập nhật ngay khi nhận được tín hiệu từ ngân hàng...</p>
+                            {isPollingStopped ? (
+                                <button
+                                    onClick={handleManualRecheck}
+                                    disabled={isRechecking}
+                                    className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all border-0 cursor-pointer w-full text-base disabled:opacity-60"
+                                >
+                                    <RotateCcw size={18} className={isRechecking ? "animate-spin" : ""} />
+                                    {isRechecking ? "Đang kiểm tra lại..." : "Kiểm tra lại trạng thái"}
+                                </button>
+                            ) : (
+                                <p className="text-xs text-gray-400">
+                                    Tự động cập nhật ngay khi nhận được tín hiệu từ ngân hàng ({pollCount}/15)...
+                                </p>
+                            )}
                             <Link to="/my-tickets" className="flex items-center justify-center gap-2 text-blue-600 hover:text-blue-800 text-sm font-medium no-underline">
                                 <Ticket size={16} /> Kiểm tra trong Vé của tôi
                             </Link>

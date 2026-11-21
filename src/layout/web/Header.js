@@ -53,6 +53,9 @@ export default function Header() {
                     📊 Admin Panel
                   </Link>
                 )}
+                <Link to="/my-tickets" className="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
+                  🎟️ Vé của tôi
+                </Link>
                 <Link to="/profile" className="block px-4 py-2 text-gray-300 hover:bg-gray-700 hover:text-white">
                   Hồ sơ
                 </Link>

@@ -37,10 +37,9 @@ export default function AdminDashboard() {
   const [chartData, setChartData] = useState([]);
 
   const formatPercent = (val) => {
-    if (val === undefined || val === null) return "0%";
+    if (val === undefined || val === null || isNaN(val)) return "0%";
     const n = Number(val) || 0;
-    const pct = n <= 1 ? n * 100 : n;
-    return `${pct.toFixed(2)}%`;
+    return `${n.toFixed(2)}%`;
   };
 
   const normalizeList = (data) => {
